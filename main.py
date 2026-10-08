@@ -24,7 +24,7 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 
-# IDs DE LOS CANALES (sustituye por los números correspondientes)
+# IDs DE LOS CANALES
 ID_CANAL_BIENVENIDA = 1557394035398676593
 ID_CANAL_DESPEDIDA = 1557394275556261990
 
@@ -40,17 +40,27 @@ async def on_ready():
 async def on_member_join(member):
     canal = client.get_channel(ID_CANAL_BIENVENIDA)
     if canal:
-        await canal.send(
-            f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.\n{URL_FOTO_BIENVENIDA}'
+        embed = discord.Embed(
+            description=f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.',
+            color=0xff00ff # Color magenta
         )
+        embed.set_image(url=URL_FOTO_BIENVENIDA)
+        await canal.send(embed=embed)
 
 @client.event
 async def on_member_remove(member):
     canal = client.get_channel(ID_CANAL_DESPEDIDA)
     if canal:
-        await canal.send(
-            f'**{member.mention}** (`{member.name}`) ha sufrido combustión espontánea y ya no está en el servidor. 🔥💥\n{URL_FOTO_DESPEDIDA}'
+        embed = discord.Embed(
+            description=f'**{member.mention}** (`{member.name}`) ha sufrido combustión espontánea y ya no está en el servidor. 🔥💥',
+            color=0xff4500 # Color naranja/fuego
         )
+        embed.set_image(url=URL_FOTO_DESPEDIDA)
+        await canal.send(embed=embed)
+
+keep_alive()
+token = os.environ.get('DISCORD_TOKEN')
+client.run(token)
 
 keep_alive()
 token = os.environ.get('DISCORD_TOKEN')
