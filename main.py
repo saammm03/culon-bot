@@ -24,11 +24,13 @@ intents.members = True
 
 client = discord.Client(intents=intents)
 
-# SUSTITUYE ESTO por la ID de tu canal de bienvenidas (en Discord: clic derecho en el canal > Copiar ID del canal)
+# IDs DE LOS CANALES (sustituye por los números correspondientes)
 ID_CANAL_BIENVENIDA = 1557394035398676593
+ID_CANAL_DESPEDIDA = 1557394275556261990
 
-# Enlace de imagen/GIF para la despedida
-URL_IMAGEN_DESPEDIDA = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHI4Y2dtZ2RkZXhhZ2s0eXp2aThzcDZwb3RzbzJ4eTl6ZjJxd3p4OCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/L952342342/giphy.gif"
+# Enlaces de las imágenes / GIFs
+URL_FOTO_BIENVENIDA = "https://cdn.discordapp.com/attachments/1557496548336869428/1557511850462158970/Banner_de_perfil_para_Discord_arte_pixelado_magenta_violeta.png?backend=b2&ex=6ac8ba32&is=6ac768b2&hm=cd90bce37fae41083068b8718b019fe080b8861d54ea289a008e215dd37eb56f&"
+URL_FOTO_DESPEDIDA = "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDcxczczbHQ2cXVjaGhmcml2b29raXd6d3d3YWRqYmsydWJ4NHh4YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GWir0luSQnBpbbvqwM/giphy.gif"
 
 @client.event
 async def on_ready():
@@ -38,14 +40,16 @@ async def on_ready():
 async def on_member_join(member):
     canal = client.get_channel(ID_CANAL_BIENVENIDA)
     if canal:
-        await canal.send(f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.')
+        await canal.send(
+            f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.\n{URL_FOTO_BIENVENIDA}'
+        )
 
 @client.event
 async def on_member_remove(member):
-    canal = client.get_channel(ID_CANAL_BIENVENIDA)
+    canal = client.get_channel(ID_CANAL_DESPEDIDA)
     if canal:
         await canal.send(
-            f'**{member.mention}** (`{member.name}`) se ha ido del servidor... Una lástima. 👋\n{URL_IMAGEN_DESPEDIDA}'
+            f'**{member.mention}** (`{member.name}`) ha sufrido combustión espontánea y ya no está en el servidor. 🔥💥\n{URL_FOTO_DESPEDIDA}'
         )
 
 keep_alive()
