@@ -125,6 +125,100 @@ async def roles(ctx):
         color=0x3498db
     )
     await ctx.send(embed=embed, view=RolesView())
+    import discord
+from discord.ext import commands
+
+# --- Lista con los 12 colores disponibles ---
+ROLES_COLORES = [
+    "Rojo", "Azul", "Verde", "Rosa", 
+    "Amarillo", "Morado", "Naranja", "Cian", 
+    "Negro", "Blanco", "Marrón", "Gris"
+]
+
+class ColorView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    async def cambiar_color(self, interaction: discord.Interaction, nombre_rol: str):
+        guild = interaction.guild
+        member = interaction.user
+
+        # Quita cualquier rol de color que el usuario tuviera antes
+        roles_a_quitar = [r for r in member.roles if r.name in ROLES_COLORES]
+        if roles_a_quitar:
+            await member.remove_roles(*roles_a_quitar)
+
+        # Asigna el nuevo rol de color
+        rol_nuevo = discord.utils.get(guild.roles, name=nombre_rol)
+        if rol_nuevo:
+            await member.add_roles(rol_nuevo)
+            await interaction.response.send_message(f"🎨 Te has puesto el color **{nombre_rol}**.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"❌ El rol `{nombre_rol}` no existe en el servidor.", ephemeral=True)
+
+    # --- Fila 1 ---
+    @discord.ui.button(label="Rojo", style=discord.ButtonStyle.danger, custom_id="btn_rojo", row=0)
+    async def btn_rojo(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Rojo")
+
+    @discord.ui.button(label="Azul", style=discord.ButtonStyle.primary, custom_id="btn_azul", row=0)
+    async def btn_azul(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Azul")
+
+    @discord.ui.button(label="Verde", style=discord.ButtonStyle.success, custom_id="btn_verde", row=0)
+    async def btn_verde(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Verde")
+
+    @discord.ui.button(label="Rosa", style=discord.ButtonStyle.secondary, custom_id="btn_rosa", row=0)
+    async def btn_rosa(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Rosa")
+
+    # --- Fila 2 ---
+    @discord.ui.button(label="Amarillo", style=discord.ButtonStyle.secondary, custom_id="btn_amarillo", row=1)
+    async def btn_amarillo(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Amarillo")
+
+    @discord.ui.button(label="Morado", style=discord.ButtonStyle.secondary, custom_id="btn_morado", row=1)
+    async def btn_morado(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Morado")
+
+    @discord.ui.button(label="Naranja", style=discord.ButtonStyle.secondary, custom_id="btn_naranja", row=1)
+    async def btn_naranja(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Naranja")
+
+    @discord.ui.button(label="Cian", style=discord.ButtonStyle.secondary, custom_id="btn_cian", row=1)
+    async def btn_cian(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Cian")
+
+    # --- Fila 3 ---
+    @discord.ui.button(label="Negro", style=discord.ButtonStyle.secondary, custom_id="btn_negro", row=2)
+    async def btn_negro(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Negro")
+
+    @discord.ui.button(label="Blanco", style=discord.ButtonStyle.secondary, custom_id="btn_blanco", row=2)
+    async def btn_blanco(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Blanco")
+
+    @discord.ui.button(label="Marrón", style=discord.ButtonStyle.secondary, custom_id="btn_marron", row=2)
+    async def btn_marron(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Marrón")
+
+    @discord.ui.button(label="Gris", style=discord.ButtonStyle.secondary, custom_id="btn_gris", row=2)
+    async def btn_gris(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.cambiar_color(interaction, "Gris")
+
+
+# --- Comando para enviar el panel ---
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def colores(ctx):
+    """Muestra el panel desplegable de colores"""
+    embed = discord.Embed(
+        title="🎨 Elige el color de tu nombre",
+        description="Haz clic en el botón del color que quieras para cambiar tu nombre en la lista del servidor.",
+        color=0x9b59b6
+    )
+    await ctx.send(embed=embed, view=ColorView())
 
 keep_alive()
 token = os.environ.get('DISCORD_TOKEN')
