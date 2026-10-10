@@ -1,4 +1,5 @@
 import discord
+fimport discord
 from discord.ext import commands
 from discord.ui import Select, View
 import os
@@ -33,12 +34,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # IDs DE LOS CANALES
 ID_CANAL_BIENVENIDA = 1557394035398676593
 ID_CANAL_DESPEDIDA = 1557394275556261990
+ID_CANAL_NIVELES = 1558453005571858453 # <--- REEMPLAZA ESTO CON EL ID DE TU CANAL DE NIVELES
 
 # Enlaces de las imágenes / GIFs
 URL_FOTO_BIENVENIDA = "https://cdn.discordapp.com/attachments/1557496548336869428/1557511850462158970/Banner_de_perfil_para_Discord_arte_pixelado_magenta_violeta.png?backend=b2&ex=6ac8ba32&is=6ac768b2&hm=cd90bce37fae41083068b8718b019fe080b8861d54ea289a008e215dd37eb56f&"
 URL_FOTO_DESPEDIDA = "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDcxczczbHQ2cXVjaGhmcml2b29raXd6d3d3YWRqYmsydWJ4NHh4YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GWir0luSQnBpbbvqwM/giphy.gif"
 
-# --- Sistema de Niveles (Base de Datos Local JSON) ---
+# --- Base de datos local de Niveles (JSON) ---
 LEVELS_FILE = "niveles.json"
 user_cooldowns = {}
 
@@ -132,6 +134,7 @@ class ColorView(discord.ui.View):
         else:
             await interaction.response.send_message(f"❌ El rol `{nombre_rol}` no existe en el servidor.", ephemeral=True)
 
+    # --- Fila 1 ---
     @discord.ui.button(label="Rojo", style=discord.ButtonStyle.danger, custom_id="btn_rojo", row=0)
     async def btn_rojo(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Rojo")
@@ -148,6 +151,7 @@ class ColorView(discord.ui.View):
     async def btn_rosa(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Rosa")
 
+    # --- Fila 2 ---
     @discord.ui.button(label="Amarillo", style=discord.ButtonStyle.secondary, custom_id="btn_amarillo", row=1)
     async def btn_amarillo(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Amarillo")
@@ -164,6 +168,7 @@ class ColorView(discord.ui.View):
     async def btn_cian(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Cian")
 
+    # --- Fila 3 ---
     @discord.ui.button(label="Negro", style=discord.ButtonStyle.secondary, custom_id="btn_negro", row=2)
     async def btn_negro(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Negro")
@@ -213,7 +218,7 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Procesar ganancia de XP al enviar mensajes
+    # Ganancia de XP al chatear
     user_id = str(message.author.id)
     current_time = time.time()
 
@@ -235,7 +240,20 @@ async def on_message(message):
             niveles[user_id]["level"] += 1
             niveles[user_id]["xp"] -= xp_necesaria
             nuevo_nivel = niveles[user_id]["level"]
-            await message.channel.send(f"🎉 ¡Enhorabuena {message.author.mention}! Has subido al **Nivel {nuevo_nivel}** 🎉")
+            
+            # Buscar el canal configurado para niveles
+            canal_niveles = bot.get_channel(ID_CANAL_NIVELES)
+            if canal_niveles:
+                embed = discord.Embed(
+                    title="🎉 ¡SUBIDA DE NIVEL!",
+                    description=f"¡Enhorabuena {message.author.mention}! Has alcanzado el **Nivel {nuevo_nivel}** 🚀",
+                    color=0x2ecc71
+                )
+                embed.set_thumbnail(url=message.author.display_avatar.url)
+                await canal_niveles.send(content=message.author.mention, embed=embed)
+            else:
+                # Si el canal no está definido o no lo encuentra, lo envía en el mismo chat
+                await message.channel.send(f"🎉 ¡Enhorabuena {message.author.mention}! Has subido al **Nivel {nuevo_nivel}** 🎉")
 
         guardar_niveles(niveles)
 
@@ -269,7 +287,7 @@ async def colores(ctx):
 # --- Comandos de Niveles ---
 @bot.command(aliases=["rank"])
 async def nivel(ctx, member: discord.Member = None):
-    """Muestra tu nivel y XP actual"""
+    """Muestra el nivel y la XP de un usuario"""
     target = member or ctx.author
     user_id = str(target.id)
     
@@ -303,7 +321,6 @@ async def top(ctx):
         await ctx.send("Todavía no hay nadie en el ranking.")
         return
 
-    # Ordenar usuarios por nivel y luego por XP
     sorted_users = sorted(niveles.items(), key=lambda x: (x[1]["level"], x[1]["xp"]), reverse=True)[:5]
     
     embed = discord.Embed(
