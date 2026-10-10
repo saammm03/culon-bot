@@ -74,7 +74,7 @@ class SelectJuegos(Select):
     async def callback(self, interaction: discord.Interaction):
         roles_dict = {
             "𝐕𝐀𝐋𝐎𝐑𝐀𝐍𝐓": "𝐕𝐀𝐋𝐎𝐑𝐀𝐍𝐓",
-            "𝐅𝐎𝐑𝐓𝐍𝐈𝐓𝐄": "𝐅𝐎𝐑𝐓NITE",
+            "𝐅𝐎𝐑𝐓𝐍𝐈𝐓𝐄": "𝐅𝐎𝐑𝐓𝐍𝐈𝐓𝐄",
             "𝐀𝐌𝐎𝐍𝐆 𝐔𝐒": "𝐀𝐌𝐎𝐍𝐆 𝐔𝐒",
             "𝐑𝐎𝐁𝐋𝐎𝐗": "𝐑𝐎𝐁𝐋𝐎𝐗",
             "𝐏𝐎𝐊𝐄𝐌𝐎𝐍": "𝐏𝐎𝐊𝐄𝐌𝐎𝐍",
@@ -224,4 +224,237 @@ async def on_message(message):
     user_id = str(message.author.id)
     current_time = time.time()
 
-    if user_id not in user_cooldowns or current_time - user_cooldowns
+    if user_id not in user_cooldowns or (current_time - user_cooldowns[user_id]) > 60:
+        user_cooldowns[user_id] = current_time
+        
+        niveles = cargar_niveles()
+        if user_id not in niveles:
+            niveles[user_id] = {"xp": 0, "level": 1}
+
+        xp_ganada = random.randint(15, 25)
+        niveles[user_id]["xp"] += xp_ganada
+        
+        xp_necesaria = niveles[user_id]["level"] * 100
+        
+        if niveles[user_id]["xp"] >= xp_necesaria:
+            niveles[user_id]["level"] += 1
+            niveles[user_id]["xp"] -= xp_necesaria
+            nuevo_nivel = niveles[user_id]["level"]
+            
+            canal_niveles = bot.get_channel(ID_CANAL_NIVELES)
+            if canal_niveles:
+                embed = discord.Embed(
+                    title="🎉 ¡SUBIDA DE NIVEL!",
+                    description=f"¡Enhorabuena {message.author.mention}! Has alcanzado el **Nivel {nuevo_nivel}** 🚀",
+                    color=0x2ecc71
+                )
+                embed.set_thumbnail(url=message.author.display_avatar.url)
+                await canal_niveles.send(content=message.author.mention, embed=embed)
+            else:
+                await message.channel.send(f"🎉 ¡Enhorabuena {message.author.mention}! Has subido al **Nivel {nuevo_nivel}** 🎉")
+
+        guardar_niveles(niveles)
+
+    await bot.process_commands(message)
+
+
+# --- Comandos de Configuración ---
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def roles(ctx):
+    """Muestra el panel de roles de juegos"""
+    embed = discord.Embed(
+        title="🎮 Roles de Juegos",
+        description="Selecciona en el menú desplegable los juegos a los que juegas para asignarte el rol correspondiente.",
+        color=0x3498db
+    )
+    await ctx.send(embed=embed, view=RolesView())
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def colores(ctx):
+    """Muestra el panel de botones de colores"""
+    embed = discord.Embed(
+        title="🎨 Elige el color de tu nombre",
+        description="Haz clic en el botón del color que quieras para cambiar tu nombre en la lista del servidor.",
+        color=0x9b59b6
+    )
+    await ctx.send(embed=embed, view=ColorView())
+
+
+# --- Comandos de Niveles ---
+@bot.command(aliases=["rank"])
+async def nivel(ctx, member: discord.Member = None):
+    """Muestra el nivel y la XP de un usuario"""
+    target = member or ctx.author
+    user_id = str(target.id)
+    
+    niveles = cargar_niveles()
+    
+    if user_id not in niveles:
+        xp_actual = 0
+        lvl_actual = 1
+    else:
+        xp_actual = niveles[user_id]["xp"]
+        lvl_actual = niveles[user_id]["level"]
+        
+    xp_necesaria = lvl_actual * 100
+    
+    embed = discord.Embed(
+        title=f"📊 Nivel de {target.display_name}",
+        color=0x2ecc71
+    )
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="⭐ Nivel", value=f"**{lvl_actual}**", inline=True)
+    embed.add_field(name="✨ XP", value=f"`{xp_actual} / {xp_necesaria}`", inline=True)
+    
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=["leaderboard"])
+async def top(ctx):
+    """Muestra el Ranking Top 5 del servidor"""
+    niveles = cargar_niveles()
+    
+    if not niveles:
+        await ctx.send("Todavía no hay nadie en el ranking.")
+        return
+
+    sorted_users = sorted(niveles.items(), key=lambda x: (x[1]["level"], x[1]["xp"]), reverse=True)[:5]
+    
+    embed = discord.Embed(
+        title="🏆 Top 5 - Tabla de Clasificación",
+        description="Los miembros más activos de C.U.L.O.S.:",
+        color=0xf1c40f
+    )
+    
+    medallas = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+    
+    for idx, (u_id, data) in enumerate(sorted_users):
+        usuario = ctx.guild.get_member(int(u_id))
+        nombre = usuario.display_name if usuario else f"Usuario ({u_id})"
+        embed.add_field(
+            name=f"{medallas[idx]} {nombre}",
+            value=f"**Nivel {data['level']}** | {data['xp']} XP",
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
+
+# --- Comandos de Entretenimiento ---
+
+@bot.command(name="8ball", aliases=["bola8"])
+async def ocho_ball(ctx, *, pregunta: str = None):
+    """Responde preguntas con la Bola 8 mágica"""
+    if not pregunta:
+        await ctx.send("❌ Tienes que hacer una pregunta. Ej: `!8ball ¿Mañana lloverá?`")
+        return
+
+    respuestas = [
+        "Sí, rotundamente sí. 🔮",
+        "Sin duda alguna. ✨",
+        "Tiene buena pinta... totalmente. 👍",
+        "Probablemente sí. 😎",
+        "Pregúntame más tarde, ahora me da pereza. 😴",
+        "Mejor no te digo nada... 🤫",
+        "No cuento con ello. 🤐",
+        "Mi respuesta es no. ❌",
+        "Ni de coña. 💀",
+        "Las probabilidades son casi nulas. 👎"
+    ]
+
+    respuesta = random.choice(respuestas)
+    embed = discord.Embed(title="🔮 La Bola 8 Mágica", color=0x9b59b6)
+    embed.add_field(name="❓ Pregunta:", value=pregunta, inline=False)
+    embed.add_field(name="🎱 Respuesta:", value=f"**{respuesta}**", inline=False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=["confesar"])
+async def confesion(ctx, *, mensaje: str = None):
+    """Envía un mensaje totalmente anónimo"""
+    if not mensaje:
+        await ctx.send("❌ Debes escribir tu confesión. Ej: `!confesion Me gusta la pizza con piña.`", delete_after=5)
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+        return
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    embed = discord.Embed(
+        title="🤫 Confesión Anónima",
+        description=f"\"{mensaje}\"",
+        color=0x111111
+    )
+    embed.set_footer(text="Enviado de forma 100% anónima a través de Culón Bot")
+
+    canal_target = bot.get_channel(ID_CANAL_CONFESIONES) or ctx.channel
+    await canal_target.send(embed=embed)
+
+
+@bot.command()
+async def ruleta(ctx):
+    """Ruleta rusa: 1 entre 6 posibilidades de sufrir un timeout de 1 minuto"""
+    bala = random.randint(1, 6)
+
+    if bala == 1:
+        embed = discord.Embed(
+            title="💥 ¡PUM!",
+            description=f"{ctx.author.mention} le ha tocado la bala. ¡Muteado durante 1 minuto! 💀",
+            color=0xe74c3c
+        )
+        await ctx.send(embed=embed)
+        try:
+            await ctx.author.timeout(datetime.timedelta(seconds=60), reason="Perdió a la ruleta rusa")
+        except Exception:
+            await ctx.send("⚠️ *(No he podido mutearte porque eres Admin o tengo un rol por debajo del tuyo)*")
+    else:
+        embed = discord.Embed(
+            title="*Clic*",
+            description=f"💨 {ctx.author.mention} se ha salvado... el tambor estaba vacío.",
+            color=0x2ecc71
+        )
+        await ctx.send(embed=embed)
+
+
+@bot.command(aliases=["idea", "propuesta"])
+async def sugerir(ctx, *, idea: str = None):
+    """Envía una sugerencia para que la comunidad vote"""
+    if not idea:
+        await ctx.send("❌ Debes incluir una idea. Ej: `!sugerir Crear un canal de memes`", delete_after=5)
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+        return
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    canal_target = bot.get_channel(ID_CANAL_SUGERENCIAS) or ctx.channel
+
+    embed = discord.Embed(
+        title="💡 Nueva Sugerencia",
+        description=idea,
+        color=0xf39c12
+    )
+    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.display_avatar.url)
+    embed.set_footer(text="¡Vota reaccionando con 👍 o 👎!")
+
+    msg = await canal_target.send(embed=embed)
+    await msg.add_reaction("👍")
+    await msg.add_reaction("👎")
+
+
+# --- Inicio del Servidor Web y del Bot ---
+keep_alive()
+token = os.environ.get('DISCORD_TOKEN')
+bot.run(token)
+
