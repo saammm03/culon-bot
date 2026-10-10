@@ -35,7 +35,7 @@ ID_CANAL_DESPEDIDA = 1557394275556261990
 URL_FOTO_BIENVENIDA = "https://cdn.discordapp.com/attachments/1557496548336869428/1557511850462158970/Banner_de_perfil_para_Discord_arte_pixelado_magenta_violeta.png?backend=b2&ex=6ac8ba32&is=6ac768b2&hm=cd90bce37fae41083068b8718b019fe080b8861d54ea289a008e215dd37eb56f&"
 URL_FOTO_DESPEDIDA = "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDcxczczbHQ2cXVjaGhmcml2b29raXd6d3d3YWRqYmsydWJ4NHh4YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GWir0luSQnBpbbvqwM/giphy.gif"
 
-# --- Menú Desplegable de Autorroles ---
+# --- Menú Desplegable de Autorroles (Juegos) ---
 class SelectJuegos(Select):
     def __init__(self):
         options = [
@@ -45,7 +45,7 @@ class SelectJuegos(Select):
             discord.SelectOption(label="𝐑𝐎𝐁𝐋𝐎𝐗", emoji="🧱", description="Rol de ROBLOX"),
             discord.SelectOption(label="𝐏𝐎𝐊𝐄𝐌𝐎𝐍", emoji="⚡", description="Rol de POKEMON"),
             discord.SelectOption(label="𝐆𝐀𝐑𝐓𝐈𝐂 𝐏𝐇𝐎𝐍𝐄", emoji="📱", description="Rol de GARTIC PHONE"),
-            discord.SelectOption(label="𝐑𝐎𝐂𝐊𝐄𝐓", emoji="🚗", description="Rol de ROCKET"),
+            discord.SelectOption(label="𝐑OСКEТ", emoji="🚗", description="Rol de ROCKET"),
             discord.SelectOption(label="𝐁𝐑𝐀𝐖𝐋", emoji="🥊", description="Rol de BRAWL STARS"),
         ]
         super().__init__(placeholder="Elige tus juegos aquí...", min_values=0, max_values=len(options), options=options)
@@ -88,47 +88,8 @@ class RolesView(View):
         super().__init__(timeout=None)
         self.add_item(SelectJuegos())
 
-# --- Eventos del Bot ---
-@bot.event
-async def on_ready():
-    print(f'Culón Bot está en línea como {bot.user}')
 
-@bot.event
-async def on_member_join(member):
-    canal = bot.get_channel(ID_CANAL_BIENVENIDA)
-    if canal:
-        embed = discord.Embed(
-            description=f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.',
-            color=0xff00ff
-        )
-        embed.set_image(url=URL_FOTO_BIENVENIDA)
-        await canal.send(embed=embed)
-
-@bot.event
-async def on_member_remove(member):
-    canal = bot.get_channel(ID_CANAL_DESPEDIDA)
-    if canal:
-        embed = discord.Embed(
-            description=f'**{member.mention}** (`{member.name}`) ha sufrido combustión espontánea y ya no está en el servidor. 🔥💥',
-            color=0xff4500
-        )
-        embed.set_image(url=URL_FOTO_DESPEDIDA)
-        await canal.send(embed=embed)
-
-# --- Comando para sacar el panel de autorroles ---
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def roles(ctx):
-    embed = discord.Embed(
-        title="🎮 Roles de Juegos",
-        description="Selecciona en el menú desplegable los juegos a los que juegas para asignarte el rol correspondiente.",
-        color=0x3498db
-    )
-    await ctx.send(embed=embed, view=RolesView())
-    import discord
-from discord.ext import commands
-
-# --- Lista con los 12 colores disponibles ---
+# --- Sistema de Colores por Botones ---
 ROLES_COLORES = [
     "Rojo", "Azul", "Verde", "Rosa", 
     "Amarillo", "Morado", "Naranja", "Cian", 
@@ -143,12 +104,10 @@ class ColorView(discord.ui.View):
         guild = interaction.guild
         member = interaction.user
 
-        # Quita cualquier rol de color que el usuario tuviera antes
         roles_a_quitar = [r for r in member.roles if r.name in ROLES_COLORES]
         if roles_a_quitar:
             await member.remove_roles(*roles_a_quitar)
 
-        # Asigna el nuevo rol de color
         rol_nuevo = discord.utils.get(guild.roles, name=nombre_rol)
         if rol_nuevo:
             await member.add_roles(rol_nuevo)
@@ -208,11 +167,49 @@ class ColorView(discord.ui.View):
         await self.cambiar_color(interaction, "Gris")
 
 
-# --- Comando para enviar el panel ---
+# --- Eventos del Bot ---
+@bot.event
+async def on_ready():
+    print(f'Culón Bot está en línea como {bot.user}')
+
+@bot.event
+async def on_member_join(member):
+    canal = bot.get_channel(ID_CANAL_BIENVENIDA)
+    if canal:
+        embed = discord.Embed(
+            description=f'¡Buenas {member.mention}! Bienvenido/a a **C.U.L.O.S.** 🍑 Pásate por el canal de normas para verificarte.',
+            color=0xff00ff
+        )
+        embed.set_image(url=URL_FOTO_BIENVENIDA)
+        await canal.send(embed=embed)
+
+@bot.event
+async def on_member_remove(member):
+    canal = bot.get_channel(ID_CANAL_DESPEDIDA)
+    if canal:
+        embed = discord.Embed(
+            description=f'**{member.mention}** (`{member.name}`) ha sufrido combustión espontánea y ya no está en el servidor. 🔥💥',
+            color=0xff4500
+        )
+        embed.set_image(url=URL_FOTO_DESPEDIDA)
+        await canal.send(embed=embed)
+
+# --- Comandos del Bot ---
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def roles(ctx):
+    """Muestra el panel de roles de juegos"""
+    embed = discord.Embed(
+        title="🎮 Roles de Juegos",
+        description="Selecciona en el menú desplegable los juegos a los que juegas para asignarte el rol correspondiente.",
+        color=0x3498db
+    )
+    await ctx.send(embed=embed, view=RolesView())
+
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def colores(ctx):
-    """Muestra el panel desplegable de colores"""
+    """Muestra el panel de botones de colores"""
     embed = discord.Embed(
         title="🎨 Elige el color de tu nombre",
         description="Haz clic en el botón del color que quieras para cambiar tu nombre en la lista del servidor.",
@@ -220,6 +217,7 @@ async def colores(ctx):
     )
     await ctx.send(embed=embed, view=ColorView())
 
+# --- Inicio del Servidor Web y del Bot ---
 keep_alive()
 token = os.environ.get('DISCORD_TOKEN')
 bot.run(token)
