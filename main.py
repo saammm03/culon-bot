@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 from discord.ui import Select, View
 import os
+import json
+import random
+import time
 from flask import Flask
 from threading import Thread
 
@@ -34,6 +37,20 @@ ID_CANAL_DESPEDIDA = 1557394275556261990
 # Enlaces de las imágenes / GIFs
 URL_FOTO_BIENVENIDA = "https://cdn.discordapp.com/attachments/1557496548336869428/1557511850462158970/Banner_de_perfil_para_Discord_arte_pixelado_magenta_violeta.png?backend=b2&ex=6ac8ba32&is=6ac768b2&hm=cd90bce37fae41083068b8718b019fe080b8861d54ea289a008e215dd37eb56f&"
 URL_FOTO_DESPEDIDA = "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDcxczczbHQ2cXVjaGhmcml2b29raXd6d3d3YWRqYmsydWJ4NHh4YyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/GWir0luSQnBpbbvqwM/giphy.gif"
+
+# --- Sistema de Niveles (Base de Datos Local JSON) ---
+LEVELS_FILE = "niveles.json"
+user_cooldowns = {}
+
+def cargar_niveles():
+    if os.path.exists(LEVELS_FILE):
+        with open(LEVELS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def guardar_niveles(data):
+    with open(LEVELS_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
 # --- Menú Desplegable de Autorroles (Juegos) ---
 class SelectJuegos(Select):
@@ -115,7 +132,6 @@ class ColorView(discord.ui.View):
         else:
             await interaction.response.send_message(f"❌ El rol `{nombre_rol}` no existe en el servidor.", ephemeral=True)
 
-    # --- Fila 1 ---
     @discord.ui.button(label="Rojo", style=discord.ButtonStyle.danger, custom_id="btn_rojo", row=0)
     async def btn_rojo(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Rojo")
@@ -132,7 +148,6 @@ class ColorView(discord.ui.View):
     async def btn_rosa(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Rosa")
 
-    # --- Fila 2 ---
     @discord.ui.button(label="Amarillo", style=discord.ButtonStyle.secondary, custom_id="btn_amarillo", row=1)
     async def btn_amarillo(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Amarillo")
@@ -149,7 +164,6 @@ class ColorView(discord.ui.View):
     async def btn_cian(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Cian")
 
-    # --- Fila 3 ---
     @discord.ui.button(label="Negro", style=discord.ButtonStyle.secondary, custom_id="btn_negro", row=2)
     async def btn_negro(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.cambiar_color(interaction, "Negro")
@@ -194,7 +208,41 @@ async def on_member_remove(member):
         embed.set_image(url=URL_FOTO_DESPEDIDA)
         await canal.send(embed=embed)
 
-# --- Comandos del Bot ---
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    # Procesar ganancia de XP al enviar mensajes
+    user_id = str(message.author.id)
+    current_time = time.time()
+
+    # Cooldown de 60 segundos por usuario
+    if user_id not in user_cooldowns or current_time - user_cooldowns[user_id] > 60:
+        user_cooldowns[user_id] = current_time
+        
+        niveles = cargar_niveles()
+        if user_id not in niveles:
+            niveles[user_id] = {"xp": 0, "level": 1}
+
+        xp_ganada = random.randint(15, 25)
+        niveles[user_id]["xp"] += xp_ganada
+        
+        # Fórmula para el siguiente nivel: nivel * 100
+        xp_necesaria = niveles[user_id]["level"] * 100
+        
+        if niveles[user_id]["xp"] >= xp_necesaria:
+            niveles[user_id]["level"] += 1
+            niveles[user_id]["xp"] -= xp_necesaria
+            nuevo_nivel = niveles[user_id]["level"]
+            await message.channel.send(f"🎉 ¡Enhorabuena {message.author.mention}! Has subido al **Nivel {nuevo_nivel}** 🎉")
+
+        guardar_niveles(niveles)
+
+    await bot.process_commands(message)
+
+
+# --- Comandos de Configuración ---
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def roles(ctx):
@@ -216,6 +264,67 @@ async def colores(ctx):
         color=0x9b59b6
     )
     await ctx.send(embed=embed, view=ColorView())
+
+
+# --- Comandos de Niveles ---
+@bot.command(aliases=["rank"])
+async def nivel(ctx, member: discord.Member = None):
+    """Muestra tu nivel y XP actual"""
+    target = member or ctx.author
+    user_id = str(target.id)
+    
+    niveles = cargar_niveles()
+    
+    if user_id not in niveles:
+        xp_actual = 0
+        lvl_actual = 1
+    else:
+        xp_actual = niveles[user_id]["xp"]
+        lvl_actual = niveles[user_id]["level"]
+        
+    xp_necesaria = lvl_actual * 100
+    
+    embed = discord.Embed(
+        title=f"📊 Nivel de {target.display_name}",
+        color=0x2ecc71
+    )
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="⭐ Nivel", value=f"**{lvl_actual}**", inline=True)
+    embed.add_field(name="✨ XP", value=f"`{xp_actual} / {xp_necesaria}`", inline=True)
+    
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=["leaderboard"])
+async def top(ctx):
+    """Muestra el Ranking Top 5 del servidor"""
+    niveles = cargar_niveles()
+    
+    if not niveles:
+        await ctx.send("Todavía no hay nadie en el ranking.")
+        return
+
+    # Ordenar usuarios por nivel y luego por XP
+    sorted_users = sorted(niveles.items(), key=lambda x: (x[1]["level"], x[1]["xp"]), reverse=True)[:5]
+    
+    embed = discord.Embed(
+        title="🏆 Top 5 - Tabla de Clasificación",
+        description="Los miembros más activos de C.U.L.O.S.:",
+        color=0xf1c40f
+    )
+    
+    medallas = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+    
+    for idx, (u_id, data) in enumerate(sorted_users):
+        usuario = ctx.guild.get_member(int(u_id))
+        nombre = usuario.display_name if usuario else f"Usuario ({u_id})"
+        embed.add_field(
+            name=f"{medallas[idx]} {nombre}",
+            value=f"**Nivel {data['level']}** | {data['xp']} XP",
+            inline=False
+        )
+
+    await ctx.send(embed=embed)
+
 
 # --- Inicio del Servidor Web y del Bot ---
 keep_alive()
